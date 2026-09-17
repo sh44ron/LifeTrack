@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="LifeTrack — Personal productivity & progress dashboard. Track daily habits, consistency streaks, and weight goals.">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LifeTrack">
+
+  <title>LifeTrack — Personal Productivity Dashboard</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json">
+
+  <!-- Apple touch icon fallback -->
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ── App Shell ─────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Page content (SPA — rendered by JS) -->
+  <main id="page-content" class="page-content" role="main" aria-live="polite">
+    <!-- JS renders pages here -->
+    <div style="display:flex;height:80dvh;align-items:center;justify-content:center;color:var(--text-muted)">
+      Loading LifeTrack…
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+    <button class="nav-btn active" data-page="today" id="nav-today" aria-label="Today">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">Today</span>
+    </button>
+    <button class="nav-btn" data-page="progress" id="nav-progress" aria-label="Progress">
+      <span class="nav-icon">📈</span>
+      <span class="nav-label">Progress</span>
+    </button>
+    <button class="nav-btn" data-page="weight" id="nav-weight" aria-label="Weight">
+      <span class="nav-icon">⚖️</span>
+      <span class="nav-label">Weight</span>
+    </button>
+    <button class="nav-btn" data-page="settings" id="nav-settings" aria-label="Settings">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ── Task Modal Overlay ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="task-modal-overlay" role="dialog" aria-modal="true" aria-label="Task editor">
+  <div class="modal" id="task-modal">
+    <!-- Filled by JS -->
+  </div>
+</div>
+
+<!-- ── Toast Notifications ────────────────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ── Scripts ────────────────────────────────────────────────────────────── -->
+<script src="./data.js"></script>
+<script src="./charts.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>
