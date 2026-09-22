@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifetrack-v1';
+const CACHE_NAME = 'lifetrack-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -25,7 +25,16 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Network first for all app files to ensure instant updates, cache fallback for offline
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        if (response && response.status === 200 && e.request.method === 'GET') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

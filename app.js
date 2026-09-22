@@ -73,7 +73,7 @@ function renderToday(el) {
         </div>
         <div class="progress-meta">
           <div class="big-done">${done}<span>/${total}</span></div>
-          <div class="progress-sub">${done === total && total > 0 ? '🎉 Perfect day!' : `${total - done} task${total - done !== 1 ? 's' : ''} remaining`}</div>
+          <div class="progress-sub">${total === 0 ? 'No tasks scheduled' : done === total ? '🎉 Perfect day!' : `${total - done} task${total - done !== 1 ? 's' : ''} remaining`}</div>
           ${streaks.current > 0 ? `<div class="streak-chip">🔥 ${streaks.current}-day streak</div>` : ''}
         </div>
       </div>
@@ -82,7 +82,8 @@ function renderToday(el) {
     ${noTasks ? `
       <div class="empty-state">
         <span class="empty-icon">📋</span>
-        <p>No tasks for today.<br>Add some tasks in the <strong>Settings</strong> tab.</p>
+        <p>No tasks for today.<br>Start tracking by adding your first daily habit or task!</p>
+        <button class="btn btn-primary" id="today-add-task-btn" style="margin-top:14px">➕ Add Task</button>
       </div>
     ` : Object.entries(groups).map(([group, gtasks]) => {
       if (gtasks.length === 0) return '';
@@ -102,6 +103,9 @@ function renderToday(el) {
   setTimeout(() => {
     renderDoughnut('doughnut-canvas', done, Math.max(total, 1));
   }, 50);
+
+  // Bind add task button if present
+  document.getElementById('today-add-task-btn')?.addEventListener('click', () => openTaskModal(null));
 
   // Bind task checkboxes
   el.querySelectorAll('.task-item').forEach(item => {
@@ -198,24 +202,29 @@ function renderProgress(el) {
   const now = new Date();
   const calHTML = buildCalendar(now.getFullYear(), now.getMonth());
 
+  const avg30Display = validScores.length ? `${avg30}%` : '–';
+  const weekAvgDisplay = weekValid.length ? `${weekAvg}%` : '–';
+  const bestDisplay = validScores.length ? `${best}%` : '–';
+  const worstDisplay = validScores.length ? `${worst}%` : '–';
+
   el.innerHTML = `
     ${pageHeader('Progress', '', `<button class="icon-btn" id="theme-toggle-prog" title="Toggle theme">🌓</button>`)}
 
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-value indigo">${avg30}%</div>
+        <div class="stat-value indigo">${avg30Display}</div>
         <div class="stat-label">30-Day Avg</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value emerald">${weekAvg}%</div>
+        <div class="stat-value emerald">${weekAvgDisplay}</div>
         <div class="stat-label">This Week</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value amber">${best}%</div>
+        <div class="stat-value amber">${bestDisplay}</div>
         <div class="stat-label">Best Day</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value rose">${worst || '–'}%</div>
+        <div class="stat-value rose">${worstDisplay}</div>
         <div class="stat-label">Worst Day</div>
       </div>
     </div>
@@ -405,11 +414,11 @@ function renderWeight(el) {
 
       <div class="weight-detail-row">
         <span class="lbl">Lost so far</span>
-        <span class="val emerald">-${lost.toFixed(1)} ${unit}</span>
+        <span class="val emerald">${startW && currentW ? `-${lost.toFixed(1)} ${unit}` : '–'}</span>
       </div>
       <div class="weight-detail-row">
         <span class="lbl">Still to lose</span>
-        <span class="val">${remaining.toFixed(1)} ${unit}</span>
+        <span class="val">${currentW && target ? `${remaining.toFixed(1)} ${unit}` : '–'}</span>
       </div>
       <div class="weight-detail-row">
         <span class="lbl">Entries logged</span>
@@ -538,7 +547,8 @@ function renderSettings(el) {
       <div class="card-title">Data</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn btn-secondary btn-full" id="export-btn">📤 Export Data (JSON)</button>
-        <button class="btn btn-danger btn-full" id="reset-btn">⚠️ Reset All Data</button>
+        <button class="btn btn-secondary btn-full" id="demo-btn">📥 Load Sample Demo Data</button>
+        <button class="btn btn-danger btn-full" id="reset-btn">🗑️ Clear All Data</button>
       </div>
     </div>
   `;
@@ -576,11 +586,18 @@ function renderSettings(el) {
 
   document.getElementById('export-btn')?.addEventListener('click', exportData);
 
+  document.getElementById('demo-btn')?.addEventListener('click', () => {
+    if (confirm('Load sample demo data? This will load sample habits, historical completions, and weight entries.')) {
+      DB.seedDemoData(true);
+      showToast('Sample demo data loaded.', 'success');
+      navigate('today');
+    }
+  });
+
   document.getElementById('reset-btn')?.addEventListener('click', () => {
-    if (confirm('This will delete ALL your data. Are you sure?')) {
-      localStorage.clear();
-      DB.seedDemoData();
-      showToast('Data reset to demo.', '');
+    if (confirm('This will permanently delete ALL tasks, completion history, and weight records. Are you sure?')) {
+      DB.clearAllData();
+      showToast('✓ All data cleared successfully.', 'success');
       navigate('today');
     }
   });
@@ -700,7 +717,7 @@ function openTaskModal(taskId) {
     }
 
     closeTaskModal();
-    navigate('settings');
+    navigate(State.currentPage || 'today');
   });
 }
 
@@ -782,7 +799,9 @@ function init() {
 
   // Register service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js').then(reg => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   }
 
   // Render first page

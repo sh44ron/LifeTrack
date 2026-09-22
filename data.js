@@ -1,7 +1,7 @@
 // LifeTrack Data Layer
 // All persistence via localStorage
 
-const DB_VERSION = '1.1'; // bump this to wipe stale data on reload
+const DB_VERSION = '2.0';
 
 let _idCounter = 0; // ensures uniqueness even within the same millisecond
 
@@ -189,20 +189,61 @@ const DB = {
     return result;
   },
 
-  // ── Version check — wipe stale data if version mismatch ───────────────────
+  // ── Version check & migration ─────────────────────────────────────────────
   checkVersion() {
     const stored = this._get(this.KEYS.VERSION);
-    if (stored !== DB_VERSION) {
-      // Clear everything and re-seed with correct IDs
-      Object.values(this.KEYS).forEach(k => localStorage.removeItem(k));
-      this._set(this.KEYS.VERSION, DB_VERSION);
-      this.seedDemoData();
+    const demoTaskNames = ['Jogging', 'Gym', 'Online Class', 'Bank Exam Prep', 'Typing Practice', 'Coding Practice', 'Sleep on Time'];
+    const currentTasks = this.getTasks();
+
+    // Check if the current data is the pre-inputted demo data from v1.1
+    const isUntouchedDemoData = currentTasks.length === demoTaskNames.length &&
+      currentTasks.every((t, i) => t.name === demoTaskNames[i]);
+
+    if (stored === '1.1' && isUntouchedDemoData) {
+      // Auto-clean the legacy pre-inputted demo data so user starts with a clean slate
+      this.clearAllData();
+      return;
     }
+
+    // Ensure all base structures exist without wiping user data
+    if (!this._get(this.KEYS.TASKS)) this._set(this.KEYS.TASKS, []);
+    if (!this._get(this.KEYS.COMPLETIONS)) this._set(this.KEYS.COMPLETIONS, {});
+    if (!this._get(this.KEYS.WEIGHT)) this._set(this.KEYS.WEIGHT, []);
+    if (!this._get(this.KEYS.SETTINGS)) {
+      this._set(this.KEYS.SETTINGS, {
+        targetWeight: 70,
+        startWeight: null,
+        units: 'kg',
+        theme: 'dark',
+      });
+    }
+
+    // Always ensure DB version is recorded so it is never treated as uninitialized
+    this._set(this.KEYS.VERSION, DB_VERSION);
   },
 
-  // ── Seed demo data ─────────────────────────────────────────────────────────
-  seedDemoData() {
-    if (this.getTasks().length > 0) return; // already seeded
+  // ── Clear all data ─────────────────────────────────────────────────────────
+  clearAllData() {
+    this.saveTasks([]);
+    this._set(this.KEYS.COMPLETIONS, {});
+    this._set(this.KEYS.WEIGHT, []);
+    const currentTheme = this.getSettings().theme || 'dark';
+    this._set(this.KEYS.SETTINGS, {
+      targetWeight: 70,
+      startWeight: null,
+      units: 'kg',
+      theme: currentTheme,
+    });
+    this._set(this.KEYS.VERSION, DB_VERSION);
+  },
+
+  // ── Seed demo data (explicit user action only) ──────────────────────────────
+  seedDemoData(force = false) {
+    if (!force && this.getTasks().length > 0) return;
+
+    if (force) {
+      this.clearAllData();
+    }
 
     const tasks = [
       { name: 'Jogging', category: 'Fitness', group: 'Morning', frequency: 'daily' },
@@ -215,15 +256,13 @@ const DB = {
     ];
     tasks.forEach(t => this.addTask(t));
 
-    // Seed some historical completions (last 14 days)
-    const taskList = this.getTasks();
+    // Seed historical completions (last 14 days)
     for (let i = 14; i >= 1; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const ds = formatDate(d);
       const dueTasks = this.getTasksDueOn(ds);
       dueTasks.forEach(t => {
-        // ~75% completion rate for realistic demo
         if (Math.random() > 0.25) {
           this.setCompletion(ds, t.id, true);
         }
@@ -239,7 +278,8 @@ const DB = {
       this.addWeightEntry(formatDate(d), parseFloat(w.toFixed(1)));
     }
 
-    this.saveSettings({ targetWeight: 70, startWeight: 91, units: 'kg', theme: 'dark' });
+    this.saveSettings({ targetWeight: 70, startWeight: 91, units: 'kg' });
+    this._set(this.KEYS.VERSION, DB_VERSION);
   },
 };
 
